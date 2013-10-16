@@ -3,7 +3,7 @@ applescript-torrent-helper
 
 Small applescript that can be used with folder actions to move and / or process incoming torrent files.
 
-This script assumes you have XLD installed to perform file conversions. 
+This script assumes you have XLD and the XLD command line utility installed to perform file conversions.
 
 My process basically looks like this:
 
