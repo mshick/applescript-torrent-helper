@@ -48,9 +48,7 @@ on process_item(this_item)
 		if (the name extension of the item_info is in the convert_extension_list) then
 			do shell script "/usr/local/bin/xld -f alac -o " & quoted form of POSIX path of destination_path & space & quoted form of POSIX path of this_item
 		else
-			tell application "Finder"
-				copy file quoted form of POSIX path of this_item to folder quoted form of POSIX path of destination_path
-			end tell
+			do shell script "/bin/cp " & quoted form of POSIX path of this_item & space & quoted form of POSIX path of destination_path
 		end if
 	on error error_message number error_number
 		if the error_number is not -128 then
