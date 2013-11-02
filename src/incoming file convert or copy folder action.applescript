@@ -1,9 +1,9 @@
-property extension_list : {"flac", "mp3", "m4a", "mkv", "mov", "mp4"}
+property extension_list : {"flac", "mp3", "m4a"}
 property convert_extension_list : {"flac"}
 property destination_path : "/Users/mshick/Dropbox/Incoming"
 
 on adding folder items to theFolder after receiving these_items
-	
+
 	-- This should make the folder action wait until large files have finished copying to the folder
 	set fSizes to {0}
 	repeat
@@ -11,7 +11,7 @@ on adding folder items to theFolder after receiving these_items
 		if (item -1 of fSizes) = (item -2 of fSizes) then exit repeat
 		delay 1
 	end repeat
-	
+
 	repeat with i from 1 to number of items in these_items
 		set this_item to item i of these_items
 		set the item_info to the info for this_item
@@ -23,12 +23,12 @@ on adding folder items to theFolder after receiving these_items
 			end if
 		end if
 	end repeat
-	
+
 end adding folder items to
 
 on process_folder(this_folder)
 	set these_items to list folder this_folder without invisibles
-	
+
 	repeat with i from 1 to the count of these_items
 		set this_item to alias ((this_folder as Unicode text) & (item i of these_items))
 		set the item_info to info for this_item
@@ -45,10 +45,22 @@ end process_folder
 on process_item(this_item)
 	try
 		set the item_info to info for this_item
+<<<<<<< HEAD
 		if (the name extension of the item_info is in the convert_extension_list) then
 			do shell script "/usr/local/bin/xld -f alac -o " & quoted form of POSIX path of destination_path & space & quoted form of POSIX path of this_item
 		else
 			do shell script "/bin/cp " & quoted form of POSIX path of this_item & space & quoted form of POSIX path of destination_path
+=======
+		-- Two days ago
+		set current_date to (current date) - 172800
+		set item_date to creation date of item_info
+		if (item_date > current_date) then
+			if (the name extension of the item_info is in the convert_extension_list) then
+				do shell script "/usr/local/bin/xld -f alac -o " & quoted form of POSIX path of destination_path & space & quoted form of POSIX path of this_item
+			else
+				do shell script "/bin/cp " & quoted form of POSIX path of this_item & space & quoted form of POSIX path of destination_path
+			end if
+>>>>>>> adding in a check to only copy files with creation dates in the last 2 days, to prevent occasional reprocessing of older files for unknown reasons
 		end if
 	on error error_message number error_number
 		if the error_number is not -128 then
