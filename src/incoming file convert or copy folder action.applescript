@@ -1,73 +1,196 @@
-property extension_list : {"flac", "mp3", "m4a"}
-property convert_extension_list : {"flac"}
-property destination_path : "/Users/mshick/Dropbox/Incoming"
+property audio_extension_list : {"flac", "mp3", "m4a"}
+property audio_convert_list : {"flac"}
+property audio_destination_folder : "/Volumes/Mercury Qx2/iTunes/iTunes Media/Automatically Add to iTunes"
+property video_extension_list : {"mkv"}
+property video_convert_list : {"mkv"}
+property video_destination_folder : "/Volumes/Mercury Qx2/Movies"
+property tmp_folder : "/Volumes/Mercury Qx2/.folder-actions/tmp"
+property processing_timeout : 60 * 60 -- 1 hour
+property processing_window : 48 * 60 * 60 -- 48 hours
+property log_file : "/Volumes/Mercury Qx2/.folder-actions/folder-actions.log"
 
 on adding folder items to theFolder after receiving these_items
+	with timeout of (processing_timeout) seconds
+		global queued_items
+		set queued_items to {}
 
-	-- This should make the folder action wait until large files have finished copying to the folder
-	set fSizes to {0}
-	repeat
-		tell application "System Events" to set end of fSizes to size of theFolder
-		if (item -1 of fSizes) = (item -2 of fSizes) then exit repeat
-		delay 1
-	end repeat
+		global temp_files
+		set temp_files to {}
 
-	repeat with i from 1 to number of items in these_items
-		set this_item to item i of these_items
-		set the item_info to the info for this_item
-		if folder of the item_info is true then
-			process_folder(this_item)
-		else
-			if (alias of the item_info is false and the name extension of the item_info is in the extension_list) then
-				process_item(this_item)
-			end if
-		end if
-	end repeat
+		-- This should make the folder action wait until large files have finished copying to the folder
+		set fSizes to {0}
+		try
+			repeat
+				tell application "System Events" to set end of fSizes to size of theFolder
+				if (item -1 of fSizes) = (item -2 of fSizes) then exit repeat
+				delay 1
+			end repeat
 
+			repeat with i from 1 to number of items in these_items
+				set this_item to item i of these_items
+				set the item_info to the info for this_item
+				if folder of the item_info is true then
+					handle_folder(this_item)
+				else
+					handle_item(this_item)
+				end if
+			end repeat
+
+		on error error_message number error_number
+			handle_error(error_message, error_number)
+		end try
+
+		-- process any queued files
+		queued()
+
+		-- invoke cleanup to remove any temp files
+		cleanup()
+	end timeout
 end adding folder items to
 
-on process_folder(this_folder)
+on handle_folder(this_folder)
+
 	set these_items to list folder this_folder without invisibles
 
-	repeat with i from 1 to the count of these_items
-		set this_item to alias ((this_folder as Unicode text) & (item i of these_items))
-		set the item_info to info for this_item
-		if folder of the item_info is true then
-			process_folder(this_item)
-		else
-			if (alias of the item_info is false and the name extension of the item_info is in the extension_list) then
-				process_item(this_item)
-			end if
-		end if
-	end repeat
-end process_folder
-
-on process_item(this_item)
 	try
-		set the item_info to info for this_item
-<<<<<<< HEAD
-		if (the name extension of the item_info is in the convert_extension_list) then
-			do shell script "/usr/local/bin/xld -f alac -o " & quoted form of POSIX path of destination_path & space & quoted form of POSIX path of this_item
-		else
-			do shell script "/bin/cp " & quoted form of POSIX path of this_item & space & quoted form of POSIX path of destination_path
-=======
-		-- Two days ago
-		set current_date to (current date) - 172800
-		set item_date to creation date of item_info
-		if (item_date > current_date) then
-			if (the name extension of the item_info is in the convert_extension_list) then
-				do shell script "/usr/local/bin/xld -f alac -o " & quoted form of POSIX path of destination_path & space & quoted form of POSIX path of this_item
+		repeat with i from 1 to the count of these_items
+			set this_item to alias ((this_folder as Unicode text) & (item i of these_items))
+			set the item_info to info for this_item
+			if folder of the item_info is true then
+				handle_folder(this_item)
 			else
-				do shell script "/bin/cp " & quoted form of POSIX path of this_item & space & quoted form of POSIX path of destination_path
+				handle_item(this_item)
 			end if
->>>>>>> adding in a check to only copy files with creation dates in the last 2 days, to prevent occasional reprocessing of older files for unknown reasons
-		end if
+		end repeat
 	on error error_message number error_number
-		if the error_number is not -128 then
-			tell application "Finder"
-				activate
-				display dialog error_message buttons {"Cancel"} default button 1 giving up after 120
-			end tell
-		end if
+		handle_error(error_message, error_number)
 	end try
-end process_item
+
+end handle_folder
+
+on handle_item(this_item)
+
+	set the item_info to info for this_item
+	set current_date to (current date) - processing_window
+	set item_date to creation date of item_info
+
+	if (item_date > current_date) then
+		if (alias of the item_info is false and the name extension of the item_info is in the audio_extension_list) then
+			process_audio_item(this_item)
+		else if (alias of the item_info is false and the name extension of the item_info is in the video_extension_list) then
+			process_video_item(this_item)
+		end if
+	end if
+
+end handle_item
+
+on process_audio_item(this_item)
+	global queued_items
+	global temp_files
+
+	set the item_info to info for this_item
+	set destination_folder to audio_destination_folder
+
+	try
+		if (the name extension of the item_info is in the audio_convert_list) then
+			my WriteLog("Converting: " & the name of the item_info)
+			set temp_file to tmp_folder & "/" & replace_chars(the name of the item_info, the name extension of item_info, "m4a")
+			set command to "/usr/local/bin/ffmpeg -i " & quoted form of POSIX path of this_item & " -acodec alac " & quoted form of temp_file
+
+			do shell script command
+			set command to "/bin/mv " & quoted form of temp_file & space & quoted form of destination_folder
+			do shell script command
+			-- set end of temp_files to temp_file
+			-- set queue_item to {filepath:temp_file, destination:destination_folder}
+			-- set end of queued_items to queue_item
+		else
+			my WriteLog("Copying: " & the name of the item_info)
+			set copy_file to POSIX path of this_item
+			set command to "/bin/cp " & quoted form of copy_file & space & quoted form of destination_folder
+			do shell script command
+		end if
+
+		-- background the process so we can close out ASAP
+		-- do shell script "nohup " & command & " 2> " & quoted form of log_file & " > /dev/null &"
+
+	on error error_message number error_number
+		handle_error(error_message, error_number)
+	end try
+
+end process_audio_item
+
+on process_video_item(this_item)
+	global queued_items
+	global temp_files
+
+	set the item_info to info for this_item
+	set destination_folder to video_destination_folder
+
+	try
+		if (the name extension of the item_info is in the video_convert_list) then
+			my WriteLog("Converting: " & the name of the item_info)
+			set destination_file to destination_folder & "/" & replace_chars(the name of the item_info, the name extension of item_info, "m4v")
+			set command to "/usr/local/bin/mkvtomp4 --no-summary --tmp=" & quoted form of tmp_folder & " --mp4box=/usr/local/bin/mp4box --mkvinfo=/usr/local/bin/mkvinfo --mkvextract=/usr/local/bin/mkvextract --ffmpeg=/usr/local/bin/ffmpeg --overwrite --use-audio-passthrough --subtitles-track=MAIN --output=" & quoted form of destination_file & " -- " & quoted form of POSIX path of this_item
+		else
+			my WriteLog("Copying: " & the name of the item_info)
+			set command to "/bin/cp " & quoted form of POSIX path of this_item & space & quoted form of destination_folder
+		end if
+
+		do shell script command & " >> " & quoted form of log_file & " 2>&1"
+		-- background the process so we can close out ASAP
+		-- do shell script "nohup " & command & " 2> " & quoted form of log_file & " > /dev/null &"
+
+	on error error_message number error_number
+		handle_error(error_message, error_number)
+	end try
+
+end process_video_item
+
+on handle_error(error_message, error_number)
+
+	if the error_number is not -128 then
+		my WriteLog(error_message)
+	end if
+
+end handle_error
+
+on replace_chars(this_text, search_string, replacement_string)
+
+	set AppleScript's text item delimiters to the search_string
+	set the item_list to every text item of this_text
+	set AppleScript's text item delimiters to the replacement_string
+	set this_text to the item_list as string
+	set AppleScript's text item delimiters to ""
+	return this_text
+
+end replace_chars
+
+on WriteLog(the_text)
+	set log_date to (current date) as «class isot» as string
+	set log_text to "[" & log_date & "]" & space & the_text
+	my write_to_file(log_text, log_file)
+end WriteLog
+
+on write_to_file(this_data, target_file)
+	try
+		do shell script "echo " & quoted form of this_data & " >> " & quoted form of target_file
+	on error
+		-- do nothing
+	end try
+end write_to_file
+
+on queued()
+	global queued_items
+	repeat with i from 1 to the count of queued_items
+		set queued_item to item i of queued_items
+		do shell script "/bin/cp " & quoted form of filepath of queued_item & space & quoted form of destination of queued_item
+	end repeat
+end queued
+
+on cleanup()
+	global temp_files
+	repeat with i from 1 to the count of temp_files
+		set temp_file to item i of temp_files
+		do shell script "rm -f " & quoted form of temp_file
+	end repeat
+end cleanup
