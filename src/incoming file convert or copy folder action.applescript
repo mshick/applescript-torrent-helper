@@ -177,7 +177,7 @@ on process_video_item(this_item)
         if (the name extension of the item_info is in the video_convert_list) then
             my WriteLog("Converting: " & the name of the item_info)
             set destination_file to destination_folder & "/" & replace_chars(the name of the item_info, the name extension of item_info, "m4v")
-            set command to "/usr/local/bin/mkvtomp4 --no-summary --tmp=" & quoted form of tmp_folder & " --mp4box=/usr/local/bin/mp4box --mkvinfo=/usr/local/bin/mkvinfo --mkvextract=/usr/local/bin/mkvextract --ffmpeg=/usr/local/bin/ffmpeg --overwrite --use-audio-passthrough --subtitles-track=MAIN --output=" & quoted form of destination_file & " -- " & quoted form of POSIX path of this_item
+            set command to "/usr/local/bin/mkvtomp4 --no-summary --tmp=" & quoted form of tmp_folder & " --mp4box=/usr/local/bin/mp4box --mkvinfo=/usr/local/bin/mkvinfo --mkvextract=/usr/local/bin/mkvextract --ffmpeg=/usr/local/bin/ffmpeg --overwrite --use-audio-passthrough --audio-codec=aac --subtitles-track=MAIN --output=" & quoted form of destination_file & " -- " & quoted form of POSIX path of this_item
         else
             my WriteLog("Copying: " & the name of the item_info)
             set command to "/bin/cp " & quoted form of POSIX path of this_item & space & quoted form of destination_folder
@@ -205,7 +205,7 @@ on replace_chars(this_text, search_string, replacement_string)
 end replace_chars
 
 on WriteLog(the_text)
-    set log_date to (current date) as Â«class isotÂ» as string
+    set log_date to (current date) as Çclass isotÈ as string
     set log_text to "[" & log_date & "]" & space & the_text
     my write_to_file(log_text, log_file)
 end WriteLog
