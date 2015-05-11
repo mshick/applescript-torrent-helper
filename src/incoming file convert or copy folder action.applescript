@@ -4,14 +4,14 @@ property green : 6 -- processed
 
 property audio_extension_list : {"flac", "mp3", "m4a"}
 property audio_convert_list : {"flac"}
-property audio_destination_folder : "/Volumes/Mercury Qx2/iTunes/iTunes Media/Automatically Add to iTunes"
+property audio_destination_folder : "/Volumes/Storage/Music/iTunes/iTunes Media/Automatically Add to iTunes"
 property video_extension_list : {"mkv"}
 property video_convert_list : {"mkv"}
-property video_destination_folder : "/Volumes/Mercury Qx2/Movies"
-property tmp_folder : "/Volumes/Mercury Qx2/.folder-actions/tmp"
+property video_destination_folder : "/Volumes/Storage/Movies/Films"
+property tmp_folder : "/Users/mshick/.folder-actions/tmp"
 property processing_timeout : 60 * 60 -- 1 hour
 property processing_window : 48 * 60 * 60 -- 48 hours
-property log_file : "/Volumes/Mercury Qx2/.folder-actions/folder-actions.log"
+property log_file : "/Users/mshick/.folder-actions/folder-actions.log"
 
 on adding folder items to this_folder after receiving added_items
     global queued_items
